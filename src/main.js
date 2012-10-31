@@ -53,11 +53,33 @@ phantom.injectJs("webelementlocator.js");
 router = new ghostdriver.RouterReqHand();
 
 // Start the server
-if (server.listen(ghostdriver.system.args[1] || 8080, router.handle)) {
+//TODO update header comments
+var hostUrl, hostPort;
+var hostParam = ghostdriver.system.args[1];
+
+if (hostParam) {
+  console.log("URL:" + hostParam);
+  if (hostParam.match(/^(\d+)$/)) {
+    // Only port was supplied
+      hostPort = parseInt(hostParam, 10);
+      hostUrl = "http://127.0.0.1:" + hostPort + "/";
+  } else {
+    // Full host name was supplied
+    hostUrl = hostParam;
+    hostPort = parseInt(hostParam.match(/([\w\d\.]+):(\d+)/)[2], 10);
+  }
+} else {
+  hostPort = 8080;
+  hostUrl = "http://127.0.0.1:" + hostPort + "/";
+}
+
+if (server.listen(hostPort, router.handle)) {
     console.log('Ghost Driver running on port ' + server.port);
     var reg = ghostdriver.hub.register;
-    if (ghostdriver.system.args[2])
-        reg(ghostdriver.system.args[1], ghostdriver.system.args[2]);
+    if (ghostdriver.system.args[2]) {
+        reg(hostUrl, ghostdriver.system.args[2]);
+        console.log('Selenium Grid hub will send commands to Ghost Driver listening for webdriver commands on ' + hostUrl);
+    }
 } else {
     console.error("ERROR: Could not start Ghost Driver");
     phantom.exit();

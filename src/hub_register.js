@@ -26,13 +26,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /* generate node configuration for this node */
-var nodeconf = function(port, hub){
-  var ref$, hubHost, hubPort;
+var nodeconf = function(hostUrl, hub){
+  var ref$, hostPort, hubHost, hubPort;
+  ref$ = hostUrl.match(/([\w\d\.]+):(\d+)/), hostPort = ref$[2];
   ref$ = hub.match(/([\w\d\.]+):(\d+)/), hubHost = ref$[1], hubPort = ref$[2];
   hubPort = +hubPort;
   return {
     capabilities: [{
       browserName: "phantomjs",
+      // Note that multiple webdriver sessions or instances within a single
+      // Ghostdriver process will interact in unexpected and undesirable
+      // ways. Hence we limit both sessions and instances to 1. If you
+      // require more than this, then you should start multiple Ghostdriver
+      // instances.
       maxInstances: 1,
       seleniumProtocol: "WebDriver"
     }],
@@ -40,24 +46,24 @@ var nodeconf = function(port, hub){
       hub: hub,
       hubHost: hubHost,
       hubPort: hubPort,
-      port: port,
+      port: hostPort,
       proxy: "org.openqa.grid.selenium.proxy.DefaultRemoteProxy",
-      // Note that multiple webdriver sessions or instances within a single
-      // Ghostdriver process will interact in unexpected and undesirable ways.
+      // We only allow a single session. See the discussion above on
+      // maxInstances.
       maxSession: 1,
       register: true,
       registerCycle: 5000,
       role: "wd",
-      url: "http://127.0.0.1:" + port,
-      remoteHost: "http://127.0.0.1:" + port
+      // NB: I think url is a backward-compatible version of remoteHost, for selenium grid hubs on something earlier than v2.9
+      url: hostUrl,
+      remoteHost: hostUrl
     }
   };
 };
 
 module.exports = {
-  register: function(port, hub){
+  register: function(hostUrl, hub){
     var page = require('webpage').create();
-    port = +port;
     if (!hub.match(/\/$/)) {
       hub += '/';
     }
@@ -65,7 +71,7 @@ module.exports = {
     /* Register with selenium grid server */
     page.open(hub + 'grid/register', {
       operation: 'post',
-      data: JSON.stringify(nodeconf(port, hub)),
+      data: JSON.stringify(nodeconf(hostUrl, hub)),
       headers: {
         'Content-Type': 'application/json'
       }
